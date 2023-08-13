@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        color: #fff;
+        font-family: sans-serif;
+      }
+
+      .game {
+        position: absolute;
+        margin-bottom: 10px;
+        height: 500px;
+        width: 500px;
+        background-color: gray;
+        left: 50%;
+        margin-left: -250px;
+      }
+
+      .board {
+        position: relative;
+        left: 20%;
+        top: 5%;
+        height: 300px;
+        width: 300px;
+      }
+
+      .table {
+        border-collapse: collapse;
+      }
+
+      .square {
+        height: 100px;
+        width: 100px;
+        font-size: 70px;
+        text-align: center;
+        box-sizing: border-box;
+      }
+
+      .square:hover,
+      .btn:hover,
+      .play:hover {
+        background-color: #454545;
+        cursor: pointer;
+      }
+
+      .vertical {
+        border-left: 8px solid brown;
+        border-right: 8px solid brown;
+      }
+
+      .horizontal {
+        border-top: 8px solid brown;
+        border-bottom: 8px solid brown;
+      }
+
+      .center {
+        border: 8px solid brown;
+      }
+
+      .victory {
+        color: rgb(231, 143, 10);
+      }
+
+      .draw {
+        color: #ddca7e;
+      }
+
+      .console {
+        position: relative;
+        margin-top: 50px;
+        margin-left: 10px;
+        height: 100px;
+        width: 480px;
+        border-top: 8px solid brown;
+        border-bottom: 8px solid brown;
+      }
+
+      .select {
+        margin-top: 25px;
+      }
+
+      .select * {
+        display: inline;
+      }
+
+      .btn {
+        background-color: #000;
+        height: 50px;
+        width: 50px;
+        font-size: 20px;
+        margin-left: 10px;
+      }
+
+      .play {
+        background-color: #000;
+        height: 50px;
+        width: 100px;
+        font-size: 20px;
+        float: right;
+        margin-right: 10px;
+      }
+
+      .active {
+        background-color: rgb(92, 92, 156);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game">
+      <div class="board">
+        <table class="table">
+          <tr class="row">
+            <td class="square corner" id="one"></td>
+            <td class="square vertical edge" id="two"></td>
+            <td class="square corner" id="three"></td>
+          </tr>
+          <tr class="row">
+            <td class="square horizontal edge" id="four"></td>
+            <td class="square center" id="five"></td>
+            <td class="square horizontal edge" id="six"></td>
+          </tr>
+          <tr class="row">
+            <td class="square corner" id="seven"></td>
+            <td class="square vertical edge" id="eight"></td>
+            <td class="square corner" id="nine"></td>
+          </tr>
+        </table>
+      </div>
+      <div class="console">
+        <div class="select">
+          <button class="btn" id="X">X</button>
+          <button class="btn" id="O">O</button>
+          <button class="btn play" id="player">Player1</button>
+          <button class="btn play" id="AI">AI</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        //to determine "X" or "O" and if player makes the first move
+        var playerStart = false;
+        var player = "";
+        var AI = "";
+        var fields = [
+          "one",
+          "two",
+          "three",
+          "four",
+          "five",
+          "six",
+          "seven",
+          "eight",
+          "nine",
+        ];
+
+        // -1: empty, 1: AI, 0: Player
+        var winningConst = [
+          {
+            one: -1,
+            two: -1,
+            three: -1,
+          },
+          {
+            four: -1,
+            five: -1,
+            six: -1,
+          },
+          {
+            seven: -1,
+            eight: -1,
+            nine: -1,
+          },
+          {
+            one: -1,
+            four: -1,
+            seven: -1,
+          },
+          {
+            two: -1,
+            five: -1,
+            eight: -1,
+          },
+          {
+            three: -1,
+            six: -1,
+            nine: -1,
+          },
+          {
+            three: -1,
+            five: -1,
+            seven: -1,
+          },
+          {
+            one: -1,
+            five: -1,
+            nine: -1,
+          },
+        ];
+
+        //PRE: id that is placed and who placed it (player or AI), POST: updated winningConst
+        function updateWinningConst(id, which) {
+          var value = which === "player" ? 0 : 1;
+          winningConst.forEach(function (item, pos, self) {
+            for (var prop in item) {
+              if (item.hasOwnProperty(prop) && prop === id) {
+                self[pos][prop] = value;
+              }
+            }
+          });
+        }
+
+        //PRE: "AI" or "player" as input, POST: false if win not possible, else id of field to win.
+        function victoryPeek(entity) {
+          var toReturn = false;
+          var compare = entity === "player" ? 0 : 1;
+          winningConst.forEach(function (item, pos, self) {
+            var checker = 0;
+            var free = null;
+            for (var prop in item) {
+              if (item.hasOwnProperty(prop)) {
+                if (item[prop] === compare) {
+                  checker++;
+                }
+                if (item[prop] === -1) {
+                  free = prop;
+                }
+              }
+            }
+            if (checker === 2 && free !== null) {
+              toReturn = free;
+            }
+          });
+          return toReturn;
+        }
+
+        //PRE: id as a string, POST: content of id either -1, 0, 1 (AI, player, empty)
+        function contentOf(id) {
+          var toReturn = null;
+          winningConst.forEach(function (item, pos, self) {
+            for (var prop in item) {
+              if (item.hasOwnProperty(prop) && prop === id) {
+                toReturn = item[prop];
+                break;
+              }
+            }
+          });
+          return toReturn;
+        }
+
+        //PRE: id of field (corner only) as a string, POST: diagonal field as string, false if input not a corner
+        function diagonal(id) {
+          switch (id) {
+            case "one":
+              return "nine";
+            case "three":
+              return "seven";
+            case "seven":
+              return "three";
+            case "nine":
+              return "one";
+            default:
+              return false;
+          }
+        }
+
+        //PRE: boolean if player has placed corner, POST: decides where the AI places the sign
+        function mainStrategy(hasCornerP) {
+          if (!playerStart || !hasCornerP) {
+            //if corner === AI and diagonal === free, select the diagonal corner
+            var corner = document.getElementsByClassName("square corner");
+            for (var i = 0; i < Object.keys(corner).length; i++) {
+              var test = contentOf(corner[i].id);
+              var testDiagonal = contentOf(diagonal(corner[i].id));
+              if (test === 1 && testDiagonal === -1) {
+                return diagonal(corner[i].id);
+              }
+            }
+            //else select random corner (rare occurance that no corner get's selected)
+            //incr/decr rarity by altering iteration max of for loop
+            for (var j = 0; j < Object.keys(corner).length; j++) {
+              var random = Math.round(Math.random() * 3);
+              if (contentOf(corner[random].id) === -1) {
+                return corner[random].id;
+              }
+            }
+          }
+          //if all corners occupied or no corner selected (rare) select the center
+          var center = document.getElementsByClassName("square center");
+          if (contentOf(center[0].id) === -1) {
+            return center[0].id;
+          }
+          //if all corners and the center are occupied/not selected (rare) select the first free edge
+          var edge = document.getElementsByClassName("square edge");
+          for (var k = 0; k < Object.keys(edge).length; k++) {
+            var rand = Math.round(Math.random() * 3);
+            if (contentOf(edge[rand].id) === -1) {
+              return edge[rand].id;
+            }
+          }
+        }
+
+        //to determine if player is "X" or "O" at the start
+        function setSymbol() {
+          document.getElementById(this.id).classList.add("active");
+          player = this.id;
+          AI = player === "X" ? "O" : "X";
+          var other = document.getElementById(AI);
+          if (other.classList.contains("active")) {
+            other.classList.remove("active");
+          }
+        }
+
+        //PRE: id of field to place and symbol to place, POST: placed symbol in field
+        function placeSymbol(id, sign) {
+          var isEmpty = document.getElementById(id).innerHTML;
+          if (!isEmpty) {
+            document.getElementById(id).innerHTML = sign;
+          }
+        }
+
+        //PRE: "AI" or "player", POST: if someone has won returns an array with the winning id's, else returns false
+        function win(who) {
+          var user = who === "player" ? 0 : 1;
+          var hasWon = false;
+          for (var i = 0; i < winningConst.length; i++) {
+            var checker = 0;
+            for (var prop in winningConst[i]) {
+              if (
+                winningConst[i].hasOwnProperty(prop) &&
+                winningConst[i][prop] === user
+              ) {
+                checker++;
+              }
+            }
+            hasWon = checker === 3 ? Object.keys(winningConst[i]) : false;
+            if (hasWon) {
+              return hasWon;
+            }
+          }
+          return hasWon;
+        }
+
+        //checks for a draw every move
+        function draw() {
+          for (var i = 0; i < fields.length; i++) {
+            var fill = document.getElementById(fields[i]).innerHTML;
+            if (!fill) {
+              return false;
+            }
+          }
+          return true;
+        }
+
+        //displays a draw with a color
+        function displayDraw() {
+          for (var i = 0; i < fields.length; i++) {
+            document.getElementById(fields[i]).classList.add("draw");
+          }
+        }
+
+        //displays the victory constelation with a color
+        function displayVictory(arr) {
+          for (var i = 0; i < arr.length; i++) {
+            document.getElementById(arr[i]).classList.add("victory");
+          }
+        }
+
+        //resets the game board, winningConst, AI, player
+        function gameReset() {
+          var elements = document.getElementsByClassName("square");
+          for (var i = 0; i < elements.length; i++) {
+            elements[i].innerHTML = "";
+            if (elements[i].classList.contains("victory")) {
+              elements[i].classList.remove("victory");
+            }
+            if (elements[i].classList.contains("draw")) {
+              elements[i].classList.remove("draw");
+            }
+          }
+          var buttons = document.getElementsByClassName("btn");
+          for (var j = 0; j < buttons.length; j++) {
+            if (buttons[j].classList.contains("active")) {
+              buttons[j].classList.remove("active");
+            }
+          }
+          for (var i = 0; i < fields.length; i++) {
+            document
+              .getElementById(fields[i])
+              .removeEventListener("click", playerMove, false);
+          }
+          winningConst.forEach(function (item, pos, self) {
+            for (var prop in self[pos]) {
+              if (self[pos].hasOwnProperty(prop)) {
+                self[pos][prop] = -1;
+              }
+            }
+          });
+          playerStart = false;
+          player = "";
+          AI = "";
+        }
+
+        function AImove(cornerPlaced) {
+          var AIwin = victoryPeek("AI");
+          var playerBlock = victoryPeek("player");
+
+          if (win("player")) {
+            displayVictory(win("player"));
+            setTimeout(gameReset, 2500);
+            return;
+          } else if (AIwin) {
+            updateWinningConst(AIwin, "AI");
+            placeSymbol(AIwin, AI);
+            if (win("AI")) {
+              displayVictory(win("AI"));
+              setTimeout(gameReset, 2500);
+              return;
+            }
+          } else if (playerBlock) {
+            updateWinningConst(playerBlock, "AI");
+            placeSymbol(playerBlock, AI);
+          } else if (!draw()) {
+            var def = mainStrategy(cornerPlaced);
+            updateWinningConst(def, "AI");
+            placeSymbol(def, AI);
+          }
+          if (draw()) {
+            displayDraw();
+            setTimeout(gameReset, 2500);
+          }
+        }
+
+        //get's called with each player move
+        function playerMove() {
+          var isEmpty = document.getElementById(this.id).innerHTML;
+          if (!isEmpty) {
+            updateWinningConst(this.id, "player");
+            placeSymbol(this.id, player);
+
+            //if the player placed a corner a diagonal corner exists
+            if (diagonal(this.id)) {
+              AImove(true);
+            } else {
+              AImove(false);
+            }
+          }
+        }
+
+        function gameInit() {
+          document.getElementById(this.id).classList.add("active");
+          for (var i = 0; i < fields.length; i++) {
+            document
+              .getElementById(fields[i])
+              .addEventListener("click", playerMove, false);
+          }
+          if (this.id === "AI") {
+            AImove();
+          } else {
+            playerStart = true;
+          }
+        }
+
+        document
+          .getElementById("X")
+          .addEventListener("click", setSymbol, false);
+        document
+          .getElementById("O")
+          .addEventListener("click", setSymbol, false);
+        document
+          .getElementById("AI")
+          .addEventListener("click", gameInit, false);
+        document
+          .getElementById("player")
+          .addEventListener("click", gameInit, false);
+      })();
+    </script>
+  </body>
+</html>
